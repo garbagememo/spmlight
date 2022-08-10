@@ -1,14 +1,13 @@
 UNIT uBMP;
 {$MODE objfpc}{$H+}
 INTERFACE
-Uses Classes,SysUtils;
+Uses Classes,SysUtils,uVect;
 
 CONST
     MaxArrayNum=1024*1024*2*2;
     AllocMemSize=1024*1024*3+5120;
 
 TYPE
-    rgbColor=record b,g,r:byte; end;
 
     BMPArray=ARRAY[0..MaxArrayNum*3] OF BYTE;
     BMPIOClass=Class

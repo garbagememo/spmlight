@@ -5,8 +5,9 @@
 INTERFACE
 
 USES
-    sysutils,uBMP,math;
+    sysutils,math;
 TYPE
+    rgbColor=record b,g,r:byte; end;
     RefType=(DIFF,SPEC,REFR);// material types, used in radiance()
 {
 	DIFFUSE,    // 完全拡散面。いわゆるLambertian面。
