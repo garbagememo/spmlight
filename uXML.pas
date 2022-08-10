@@ -1,9 +1,9 @@
-﻿UNIT uXML;
+﻿unit uXML;
 
 {$mode objfpc}{$H+}
-INTERFACE
+Interface
 
-USES
+uses
   Classes, SysUtils, DOM, XMLRead,XMLWrite,uVect,uModel;
 CONST
    ConfStr   = 'CONF';
@@ -23,26 +23,26 @@ CONST
    colorStr  = 'color';
 
 
-FUNCTION ReadXMLConf(FN:string):SceneRecord;
-PROCEDURE WriteXMLScene(ScR :SceneRecord;fn:string);
+function ReadXMLConf(FN:string):SceneRecord;
+procedure WriteXMLScene(ScR :SceneRecord;fn:string);
 
-  FUNCTION RefToStr(ref:RefType):String;
-  FUNCTION StrToRef(S:String):RefType;
+  function RefToStr(ref:RefType):String;
+  function StrToRef(S:String):RefType;
   
 IMPLEMENTATION
-FUNCTION FtoSF(r:real):UnicodeString;
+function FtoSF(r:real):UnicodeString;
 BEGIN
   result:=FloatToStrF(r,ffgeneral,16,4);
 END;
 
-PROCEDURE SetVectAttribute(VAR wNode:TDOMNode;v:VecRecord);
+procedure SetVectAttribute(var wNode:TDOMNode;v:VecRecord);
 BEGIN
   TDOMElement(wNode).SetAttribute('x',FtoSF(v.x));
   TDOMElement(wNode).SetAttribute('y',FtoSF(v.y));
   TDOMElement(wNode).SetAttribute('z',FtoSF(v.z));
 END;
-FUNCTION GetVectAttribute(VAR wNode:TDOMNode):VecRecord;
-VAR
+function GetVectAttribute(var wNode:TDOMNode):VecRecord;
+var
   DebugSt:Widestring;
 BEGIN
   Debugst:=TDOMElement(wNode).GetAttribute('x');
@@ -51,10 +51,10 @@ BEGIN
   result.z:=StrToFloat(TDOMElement(wNode).GetAttribute('z'));
 END;
 
-PROCEDURE CameraToNode(xdoc:TXMLDocument;Cam:CameraRecord;VAR wNode:TDOMNode);
-VAR
+procedure CameraToNode(xdoc:TXMLDocument;Cam:CameraRecord;var wNode:TDOMNode);
+var
   NodeOrg,NodeDirect:TDOMNode;
-BEGIN
+begin
   TDOMElement(wNode).SetAttribute(WideStr,IntToStr(cam.w) );
   TDOMElement(wNode).SetAttribute(HeightStr,IntToStr(cam.h)  );
   TDOMElement(wNode).SetAttribute(ratioStr,FtoSF(cam.ratio) );
@@ -70,12 +70,12 @@ BEGIN
   wNode.AppendChild(NodeDirect);             // 子ノードをそれぞれの親ノードに挿入する
 
  
-END;
+end;
 
-PROCEDURE SphereToNode(xdoc:TXMLDocument;sp:SphereClass;VAR wNode:TDOMNode;i:INTEGER);
-VAR
+procedure SphereToNode(xdoc:TXMLDocument;sp:SphereClass;var wNode:TDOMNode;i:integer);
+var
   NodePos,NodeEmit,NodeColor:TDOMnode;
-BEGIN
+begin
   TDOMElement(wNode).SetAttribute('id', IntToStr(i));       // 親ノードを示す属性を作成する
   TDOMELement(wNode).SetAttribute(RadiusStr,FtoSF(sp.rad) );
   TDOMElement(wNode).SetAttribute(RefTypeStr,RefToStr(sp.refl) );
@@ -91,15 +91,15 @@ BEGIN
   NodeColor:=xdoc.CreateElement(ColorStr);
   SetVectAttribute(NodeColor,sp.c);
   wNode.AppendChild(NodeColor);
-END;
+end;
 
-PROCEDURE WriteXMLScene(ScR :SceneRecord;fn:string);
-VAR
+procedure WriteXMLScene(ScR :SceneRecord;fn:string);
+var
   xdoc: TXMLDocument;            // 文書を格納する変数
   RootNode, parentNode: TDOMNode;// ノードを格納する変数
   sp:SphereClass;
-  i:INTEGER;
-BEGIN
+  i:integer;
+begin
   //文書を作成する
   xdoc := TXMLDocument.create;
 
@@ -111,25 +111,25 @@ BEGIN
   RootNode.AppendChild(ParentNode);
   CameraToNode(xdoc,ScR.cam,parentNode);
 
-  FOR i:=0 TO ScR.spl.count-1 DO BEGIN
+  for i:=0 to ScR.spl.count-1 do begin
  //   RootNode:=xdoc.DocumentElement;
     parentNode:=xdoc.CreateElement(SphereStr);
     RootNode.AppendChild(ParentNode);
     sp:=SphereClass(ScR.spl[i]);
     SphereToNode(xdoc,sp,parentNode,i);
-  END;
+  end;
   writeXMLFile(xDoc,FN);                     // XML に書く
   Xdoc.free;                                 // メモリを解放する
-END;
+end;
 
 
-PROCEDURE WriteVec(v:VecRecord);
-BEGIN
-  WRITELN('x=',FtoSF(v.x),' y=',FtoSF(v.y),' z=',FtoSF(v.z) );
-END;
+procedure WriteVec(v:VecRecord);
+begin
+  Writeln('x=',FtoSF(v.x),' y=',FtoSF(v.y),' z=',FtoSF(v.z) );
+end;
 
-FUNCTION ReadXMLConf(FN:string):SceneRecord;
-VAR
+function ReadXMLConf(FN:string):SceneRecord;
+var
   Doc:TXMLDocument;
   Child:TDOMNode;
   wNode:TDOMNode;
@@ -139,28 +139,28 @@ VAR
   ref:RefType;
   spr:TList;
   cam:CameraRecord;
-  w,h,sams:INTEGER;
+  w,h,sams:integer;
   ratio,dist:real;
   o,d:VecRecord;
-BEGIN
+begin
   ReadXMLFile(Doc,FN);
   spr:=TList.Create;
 
   Child:=Doc.FirstChild.FirstChild;
-  WHILE Assigned(Child) DO BEGIN
-    IF (Child.NodeName=SphereStr) OR (Child.NodeName=CameraStr) THEN BREAK;
+  while Assigned(Child) do begin
+    if (Child.NodeName=SphereStr) or (Child.NodeName=CameraStr) THEN BREAK;
     Child:=Child.NextSibling;
-  END;
+  end;
 
-  WHILE Assigned(Child) DO BEGIN
-    IF Child.NodeName=SphereStr THEN BEGIN
+  while Assigned(Child) do begin
+    IF Child.NodeName=SphereStr THEN begin
       r:=StrToFloat(TDOMElement(Child).GetAttribute(RadiusStr));
       ref:=StrToRef(TDOMElement(Child).GetAttribute(RefTypeStr));
       wNode:=Child.FirstChild;
-      WHILE Assigned(wNode) DO BEGIN
-        IF wNode.NodeName=positionStr THEN BEGIN
+      while Assigned(wNode) do begin
+        if wNode.NodeName=positionStr then begin
           p:=GetVectAttribute(wNode);
-        END;
+        end;
         IF wNode.NodeName=emittionStr THEN BEGIN
           e:=GetVectAttribute(wNode);
         END;
@@ -168,7 +168,7 @@ BEGIN
           c:=GetVectAttribute(wNode);
         END;
         wNode:=wNode.NextSibling;
-      END;
+      end;
       spr.add(SphereClass.Create(r,p,e,c,ref));
     END;(*Sphere*)
     IF Child.NodeName=CameraStr THEN BEGIN
@@ -178,10 +178,10 @@ BEGIN
        h:=StrToInt(TDOMElement(Child).GetAttribute(HeightStr));
        sams:=StrToInt(TDOMElement(Child).GetAttribute(SampleStr));
        wNode:=Child.FirstChild;
-       WHILE Assigned(wNode) DO BEGIN
-         IF wNode.NodeName=OrgStr THEN BEGIN
+       while Assigned(wNode) do begin
+         if wNode.NodeName=OrgStr then begin
           o:=GetVectAttribute(wNode);
-         END;
+         end;
          IF wNode.NodeName=directStr THEN BEGIN
           d:=GetVectAttribute(wNode);
          END;
@@ -191,23 +191,23 @@ BEGIN
        cam.SetSamples(sams);
     END;
     Child:=Child.NextSibling;
-  END;
+  end;
   result.spl:=spr;
   result.cam:=cam;
-END;
-FUNCTION RefToStr(ref:RefType):String;
-CONST
-  RSA:ARRAY[RefType] OF string=('DIFF','SPEC','REFR');
+end;
+function RefToStr(ref:RefType):String;
+const
+  RSA:array[RefType] of string=('DIFF','SPEC','REFR');
 BEGIN
   result:=RSA[ref];
 END;
-FUNCTION StrToRef(S:String):RefType;
-BEGIN
+function StrToRef(S:String):RefType;
+begin
   result:=DIFF;
   IF S='DIFF' THEN result:=DIFF;
   IF S='SPEC' THEN result:=SPEC;
   IF S='REFR' THEN result:=REFR;
-END;
+end;
 BEGIN
 END.
 
