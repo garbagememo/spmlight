@@ -1,92 +1,107 @@
 ﻿program smallpt;
 {$MODE objfpc}{$H+}
 {$INLINE ON}
-
-uses SysUtils,Classes,uVect,uBMP,uModel,uFlux,uXML,Math,getopts;
+{$modeswitch advancedrecords}
+uses SysUtils,Classes,uVect,uBMP,uModel,uScene,uFlux,Math,getopts;
 
 const 
-  eps=1e-4;
-  INF=1e20;
+  DefaultOutFileName='out.bmp';
+type
+  FluxOptionRecord=record
+    w,h,samps:integer;
+    AlgolID,ModelID:integer;
+    OutFN:string;
+    procedure Setup(w_,h_,samp_,Algol,Model:integer;OFN:string);
+    function OutFileName:string;
+  end;
+  procedure FluxOptionRecord.Setup(w_,h_,samp_,Algol,Model:integer;OFN:string);
+  begin
+    w:=w_;h:=h_;samps:=samp_;AlgolID:=Algol;ModelID:=Model;
+    OutFN:=OFN;
+  end;
+  function FluxOptionRecord.OutFileName:string;
+  var
+    AlgolStr:string;
+  begin
+    if OutFN<>'' then begin
+      result:=OutFN;
+    end
+    else begin
+      AlgolStr:='Org';
+      if AlgolID=1 then AlgolStr:='Org';
+      if AlgolID=2 then AlgolStr:='NEE';
+      if AlgolID=3 then AlgolStr:='Loop';
+      if AlgolID=4 then AlgolStr:='LightPATH';
+      result:='M'+IntToStr(ModelID)+AlgolStr+DefaultOutFileName;
+    end;
+  end;
+
 
 VAR
-   x,y,sx,sy,s                     : INTEGER;
-   w,h,samps,height                  : INTEGER;
+   x,y,sx,sy,s                    : INTEGER;
    temp                            : VecRecord;
    tempRay                           : RayRecord;
    Cam                              : CameraRecord;
    tColor,r: VecRecord;
 
-BMPClass:BMPIOClass;
+   BMPClass:BMPIOClass;
    T1,T2:TDateTime;
    HH,MM,SS,MS:WORD;
    vColor:rgbColor;
    ArgInt:integer;
    FN,ArgFN:string;
    c:char;
-   Rt:TRenderClass;
-   ModelID,AlgoID:integer;
+   Rt:TFluxClass;
    ScR:SceneRecord;
+  FluxOpt:FluxOptionRecord;
 BEGIN
-  FN:='temp.bmp';
-  Rt:=TRenderClass.Create;
-  InitScene;
-  ModelID:=0;AlgoID:=1;
-  ScR.spl:=CopyScene(ModelID);
-  w:=320 ;h:=240;  samps := 16;
+  FluxOpt.OutFN:='';//空白のとき名前を作る
+  FluxOpt.AlgolID:=1;
+  FluxOpt.ModelID:=0;
+  FluxOpt.w:=320 ;FluxOpt.h:=240;  FluxOpt.samps := 16;
+
+
   c:=#0;
   repeat
-    c:=getopt('m:o:a:s:w:x:');
-
+    c:=getopt('m:o:a:s:w:');
     case c of
       'm': BEGIN
           ArgInt:=StrToInt(OptArg);
-          ModelId:=ArgInt;
-          FN:=ExtractFileName(paramStr(0));
-          Delete(FN,Length(FN)-3,4);
-          ScR.spl:=CopyScene(ArgInt);
-          writeln('Model of Scene =',ArgInt,' ',ScName[ArgInt]);
+          FluxOpt.ModelId:=ArgInt;
       END;
       'a' : BEGIN
          ArgInt:=StrToInt(OptArg);
-         AlgoID:=ArgInt;
+         FluxOpt.AlgolID:=ArgInt;
          CASE ArgInt OF
            1 : BEGIN
              Writeln('Render=Orignal')
            END;
            2 : BEGIN
-             Rt:=TNEERenderClass.Create;
              Writeln('Render=NEE');
            END;
            3 : BEGIN
-             Rt:=TLoopRenderClass.Create;
              Writeln('Render=Non Loop');
            END;
            4 : BEGIN
-             Rt:=TLightPathRenderClass.Create;
              writeln('Render=LightPath');
            END;
+           else FluxOpt.AlgolID:=1;
          END;
       END;
       'o'    : BEGIN
          ArgFN:=OptArg;
-         IF ArgFN<>'' THEN FN:=ArgFN;
+         IF ArgFN<>'' THEN FluxOpt.OutFN:=ArgFN;
          writeln ('Output FileName =',FN);
       END;
       's'    : BEGIN
         ArgInt:=StrToInt(OptArg);
-        samps:=ArgInt;
+        FluxOpt.samps:=ArgInt;
         writeln('samples =',ArgInt);
       END;
       'w'    : BEGIN
          ArgInt:=StrToInt(OptArg);
-         w:=ArgInt;h:=w *3 div 4;
-         writeln('w=',w,' ,h=',h);
-      END;
-      'x'    : BEGIN
-         writeln('FN=',OptArg);
-         ScR:=ReadXMLConf(OptArg);
-         w:=Scr.Cam.w;h:=ScR.Cam.h;
-         samps:=ScR.Cam.samples;
+         FluxOpt.w:=ArgInt;FluxOpt.h:=FluxOpt.w *3 div 4;
+         writeln('w=',FluxOpt.w,' ,h=',FluxOpt.h);
       END;
       '?',':' : BEGIN
          writeln(' -m [Model ID] Rendering Model');
@@ -94,38 +109,44 @@ BEGIN
          writeln(' -o [finename] output filename');
          writeln(' -s [samps] sampling count');
          writeln(' -w [width] screen width pixel');
-         writeln(' -x [filename] input Scene XML file');
          halt;
       END;
     end; { case }
   until c=endofoptions;
-  height:=h;
-  BMPClass:=BMPIOClass.Create(w,h);
-  case AlgoID of
-  1:FN:=FN+IntToStr(ModelId)+'org.bmp';
-  2:FN:=FN+IntToStr(ModelId)+'NEE.bmp';  
-  3:FN:=FN+IntToStr(ModelId)+'Loop.bmp';  
-  4:FN:=FN+IntToStr(ModelId)+'LPath.bmp';
+//  height:=FluxOpt.h;
+  BMPClass:=BMPIOClass.Create(FluxOpt.w,FluxOpt.h);
+  case FluxOpt.AlgolID of
+  1:RT:=TFluxClass.Create;
+  2:RT:=TNEEFluxClass.Create;
+  3:RT:=TLoopFluxClass.Create;
+  4:RT:=TLightPathFluxClass.Create;
   end;
-   
+  
+  SRList.InitSceneRecord(FluxOpt.w,FluxOpt.h);
+  RT.Scene:=SRList.SRL[FluxOpt.ModelID];
+//  Rt.Scene.mdl:=SRList.CopyScene(FluxOpt.ModelID);
+  writeln('Model of Scene =',RT.Scene.SceneName);
   Randomize;
-  Rt.SceneRec:=ScR;
-  Rt.SceneRec.Cam.Setup(CreateVec(50,52,295.6),CreateVec(0,-0.042612,-1),w,h,0.5135,140);
+
+  if FluxOpt.AlgolID=4 then begin
+    TLightPathFluxClass(Rt).LPList.SetScene(Rt.Scene)
+  end;
+
 
  
   T1:=Time;
   Writeln ('The time is : ',TimeToStr(Time));
 
-  FOR y := 0 to h-1 DO BEGIN
+  FOR y := 0 to FluxOpt.h-1 DO BEGIN
     IF y mod 10 =0 then writeln('y=',y);
-    FOR x := 0 TO w - 1 DO BEGIN
+    FOR x := 0 TO FluxOpt.w - 1 DO BEGIN
       r:=CreateVec(0, 0, 0);
       tColor:=ZeroVec;
       FOR sy := 0 TO 1 DO BEGIN
         FOR sx := 0 TO 1 DO BEGIN
-          FOR s := 0 TO samps - 1 DO BEGIN
-            temp:=Rt.Radiance(Rt.SceneRec.Cam.Ray(x,y,sx,sy), 0);
-            temp:= temp/ samps;
+          FOR s := 0 TO FluxOpt.samps - 1 DO BEGIN
+            temp:=Rt.Radiance(Rt.Scene.Cam.Ray(x,y,sx,sy), 0);
+            temp:= temp/ FluxOpt.samps;
             r:= r+temp;
           END;(*samps*)
           temp:= ClampVector(r)* 0.25;
@@ -134,12 +155,12 @@ BEGIN
         END;(*sx*)
       END;(*sy*)
       vColor:=ColToRGB(tColor);
-      BMPClass.SetPixel(x,height-y,vColor);
+      BMPClass.SetPixel(x,FluxOpt.h-y,vColor);
     END;(* for x *)
   END;(*for y*)
   T2:=Time-T1;
   DecodeTime(T2,HH,MM,SS,MS);
   Writeln ('The time is : ',HH,'h:',MM,'min:',SS,'sec');
    
-  BMPClass.WriteBMPFile(FN);
+  BMPClass.WriteBMPFile(FluxOpt.OutFileName);
 END.

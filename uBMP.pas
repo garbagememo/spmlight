@@ -1,16 +1,16 @@
-UNIT uBMP;
+unit uBMP;
 {$MODE objfpc}{$H+}
-INTERFACE
-Uses Classes,SysUtils,uVect;
+interface
+uses Classes,uVect,SysUtils;
 
-CONST
+const
     MaxArrayNum=1024*1024*2*2;
     AllocMemSize=1024*1024*3+5120;
 
-TYPE
+type
 
-    BMPArray=ARRAY[0..MaxArrayNum*3] OF BYTE;
-    BMPIOClass=Class
+    BMPArray=array[0..MaxArrayNum*3] of byte;
+    BMPIOClass=class
       bmpBodySize:longint;
       BMPWidth,BMPHeight:longint;
       bmpfileheader : packed array[0..14-1] of byte;
@@ -20,7 +20,7 @@ TYPE
       procedure SetPixel(x,y:integer;col:rgbColor);
       procedure WriteBMPFile(FN:string);
     end;
-IMPLEMENTATION
+implementation
 constructor BMPIOClass.Create(x,y:longint);
 var
   headersize, bfSize : longint;
@@ -99,8 +99,8 @@ begin
 end;
 
 
-BEGIN
-END.
+begin
+end.
 { test code
 
 var
